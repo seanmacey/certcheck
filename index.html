@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SSL Certificate Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f12;
+  --surface: #13161b;
+  --surface2: #1a1e25;
+  --border: #232830;
+  --border2: #2e3540;
+  --text: #e2e6ed;
+  --muted: #6b7585;
+  --dim: #3d4658;
+  --green: #3dd68c;
+  --green-bg: #0d2b1e;
+  --green-mid: #1a4a33;
+  --amber: #f5a623;
+  --amber-bg: #2b1f0a;
+  --red: #f05252;
+  --red-bg: #2b0f0f;
+  --blue: #5b9cf6;
+  --blue-bg: #0d1f3c;
+  --purple: #a78bfa;
+  --purple-bg: #1a1030;
+  --cyan: #22d3ee;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* ── HEADER ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.logo { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); letter-spacing: 0.05em; }
+.logo span { color: var(--muted); }
+h1 { font-size: 15px; font-weight: 500; color: var(--text); }
+.header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.refresh-info { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.next-refresh { color: var(--cyan); }
+
+/* ── TOOLBAR ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.api-row { display: flex; align-items: center; gap: 8px; }
+.api-row label { font-size: 12px; color: var(--muted); white-space: nowrap; font-family: var(--font-mono); }
+input[type=text], input[type=number] {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 6px 10px;
+  outline: none;
+}
+input[type=text]:focus, input[type=number]:focus { border-color: var(--cyan); }
+input[type=number] { width: 70px; }
+#api-url { width: 280px; }
+.btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.btn:hover { border-color: var(--cyan); color: var(--cyan); }
+.btn.primary { border-color: var(--cyan); color: var(--cyan); }
+.btn.primary:hover { background: rgba(34,211,238,0.1); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.danger:hover { background: rgba(240,82,82,0.1); }
+.sep { width: 1px; height: 24px; background: var(--border2); flex-shrink: 0; }
+.file-btn-wrap { position: relative; }
+.file-btn-wrap input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+
+/* ── SUMMARY STRIP ── */
+.summary-strip {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.stat {
+  flex: 1;
+  min-width: 90px;
+  padding: 10px 16px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stat-label { font-size: 10px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.stat-val { font-size: 22px; font-weight: 300; font-family: var(--font-mono); }
+.stat-val.green { color: var(--green); }
+.stat-val.amber { color: var(--amber); }
+.stat-val.red { color: var(--red); }
+.stat-val.blue { color: var(--blue); }
+.stat-val.muted { color: var(--muted); }
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.filter-label { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-right: 4px; }
+.filt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filt:hover { color: var(--text); border-color: var(--dim); }
+.filt.active { border-color: var(--red); color: var(--red); background: rgba(240,82,82,0.07); text-decoration: line-through; opacity: 0.75; }
+.filt.active::before { content: '✕ '; font-size: 9px; }
+.filter-hint { margin-left: auto; font-size: 10px; color: var(--dim); font-family: var(--font-mono); font-style: italic; }
+
+/* ── PROGRESS ── */
+.progress-wrap { height: 2px; background: var(--border); display: none; }
+.progress-bar { height: 100%; background: var(--cyan); transition: width 0.2s; }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { position: sticky; top: 0; z-index: 10; }
+th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+th:hover { color: var(--text); }
+th.sort-asc::after { content: ' ↑'; color: var(--cyan); }
+th.sort-desc::after { content: ' ↓'; color: var(--cyan); }
+td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+tr:hover td { background: var(--surface2); }
+tr.suspended td { opacity: 0.4; }
+tr.suspended td:first-child::before {
+  content: '⏸ ';
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.col-status  { width: 90px; }
+.col-domain  { width: 22%; }
+.col-port    { width: 60px; text-align: center; }
+.col-expiry  { width: 110px; }
+.col-days    { width: 80px; text-align: right; }
+.col-proto   { width: 70px; text-align: center; }
+.col-issuer  { width: 16%; }
+.col-renew   { width: 80px; text-align: center; }
+.col-comment { width: auto; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+  padding: 3px 8px; border-radius: 3px; letter-spacing: 0.04em; white-space: nowrap;
+}
+.badge.expired  { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(240,82,82,0.3); }
+.badge.critical { background: #2b1500;           color: #ff8c42;       border: 1px solid rgba(255,140,66,0.3); }
+.badge.warning  { background: var(--amber-bg);   color: var(--amber);  border: 1px solid rgba(245,166,35,0.3); }
+.badge.ok       { background: var(--green-bg);   color: var(--green);  border: 1px solid rgba(61,214,140,0.3); }
+.badge.error    { background: var(--surface2);   color: var(--muted);  border: 1px solid var(--border2); }
+.badge.suspended{ background: var(--surface2);   color: var(--dim);    border: 1px solid var(--border); }
+.dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.dot.expired  { background: var(--red); box-shadow: 0 0 4px var(--red); }
+.dot.critical { background: #ff8c42;   box-shadow: 0 0 4px #ff8c42; }
+.dot.warning  { background: var(--amber); box-shadow: 0 0 4px var(--amber); }
+.dot.ok       { background: var(--green); box-shadow: 0 0 4px var(--green); }
+.dot.error    { background: var(--muted); }
+
+.proto-badge {
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 6px;
+  border-radius: 3px; background: var(--blue-bg); color: var(--blue);
+  border: 1px solid rgba(91,156,246,0.25);
+}
+.proto-badge.tls13 { background: var(--green-bg); color: var(--green); border-color: rgba(61,214,140,0.25); }
+.proto-badge.tls12 { background: var(--blue-bg);  color: var(--blue);  border-color: rgba(91,156,246,0.25); }
+.proto-badge.old   { background: var(--red-bg);   color: var(--red);   border-color: rgba(240,82,82,0.25); }
+
+.renew-badge {
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 7px;
+  border-radius: 3px; white-space: nowrap;
+}
+.renew-badge.auto   { background: var(--green-bg); color: var(--green); border: 1px solid rgba(61,214,140,0.2); }
+.renew-badge.manual { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(245,166,35,0.2); }
+.renew-badge.self   { background: var(--purple-bg); color: var(--purple); border: 1px solid rgba(167,139,250,0.2); }
+.renew-badge.unknown{ background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+.days-cell { font-family: var(--font-mono); font-size: 12px; text-align: right; }
+.days-cell.red { color: var(--red); }
+.days-cell.orange { color: #ff8c42; }
+.days-cell.amber { color: var(--amber); }
+.days-cell.green { color: var(--green); }
+.days-cell.muted { color: var(--muted); }
+
+.comment-cell { font-size: 12px; color: var(--muted); font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; cursor: help; }
+
+.error-cell { font-size: 11px; color: var(--red); font-family: var(--font-mono); cursor: help; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── EMPTY / LOADING ── */
+.empty { text-align: center; padding: 3rem; color: var(--muted); font-family: var(--font-mono); font-size: 13px; }
+.empty-icon { font-size: 28px; margin-bottom: 12px; opacity: 0.4; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 24px;
+  max-width: 520px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal h3 { font-size: 14px; font-weight: 500; margin-bottom: 16px; color: var(--cyan); font-family: var(--font-mono); }
+.modal-row { display: flex; gap: 8px; margin-bottom: 10px; font-size: 13px; }
+.modal-key { color: var(--muted); font-family: var(--font-mono); font-size: 11px; min-width: 110px; padding-top: 1px; }
+.modal-val { color: var(--text); word-break: break-all; }
+.modal-close { margin-top: 16px; }
+.san-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.san-tag { font-family: var(--font-mono); font-size: 10px; padding: 2px 6px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 3px; color: var(--muted); }
+
+/* ── MANAGE PANEL ── */
+.manage-panel {
+  display: none;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.manage-panel.open { display: block; }
+.manage-panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; user-select: none; padding-bottom: 10px;
+}
+.manage-panel-header:hover .manage-panel-title { color: var(--text); }
+.manage-panel-title { font-size: 12px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+.manage-chevron { font-size: 10px; color: var(--dim); transition: transform 0.2s; display: inline-block; }
+.manage-chevron.collapsed { transform: rotate(-90deg); }
+.manage-body { overflow: hidden; transition: max-height 0.25s ease, opacity 0.2s; max-height: 600px; opacity: 1; }
+.manage-body.collapsed { max-height: 0; opacity: 0; pointer-events: none; }
+.site-list { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; margin-bottom: 10px; }
+.site-item {
+  display: grid;
+  grid-template-columns: 1fr 60px 80px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  font-size: 12px;
+}
+.site-item input[type=text] { width: 100%; font-size: 12px; padding: 4px 8px; }
+.site-item input[type=checkbox] { cursor: pointer; accent-color: var(--amber); }
+.add-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; flex-wrap: wrap; }
+.add-row input[type=text] { flex: 1; min-width: 120px; }
+.add-row input[type=number] { width: 70px; }
+
+/* ── FOOTER ── */
+.footer {
+  padding: 10px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.footer-left { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.footer-right { display: flex; gap: 8px; }
+
+@media(max-width:700px) {
+  .col-proto, .col-renew { display: none; }
+  .col-comment { display: none; }
+}
+
+/* ── MODE TOGGLE ── */
+.mode-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 24px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.mode-toggle-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.mode-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 3px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+.mode-badge.centralised {
+  background: rgba(34,211,238,0.1);
+  color: var(--cyan);
+  border: 1px solid rgba(34,211,238,0.3);
+}
+.mode-badge.local {
+  background: rgba(167,139,250,0.1);
+  color: var(--purple);
+  border: 1px solid rgba(167,139,250,0.3);
+}
+.mode-desc {
+  font-size: 11px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  margin-left: 4px;
+}
+/* pill toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border2);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  left: 3px; top: 3px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.2s, background 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider { background: rgba(167,139,250,0.3); }
+.toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); background: var(--purple); }
+.csv-status {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.csv-status .dot-live {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(34,211,238,0.4); }
+  50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(34,211,238,0); }
+}
+/* hide toolbar controls in centralised mode */
+.centralised-hide { transition: opacity 0.2s; }
+body.mode-centralised .centralised-hide { opacity: 0.25; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">SSL<span>/</span>MONITOR</div>
+    <h1>Certificate Expiry Dashboard</h1>
+  </div>
+  <div class="header-right">
+    <div class="refresh-info">
+      Auto-refresh every <select id="refresh-interval" style="background:var(--bg);border:1px solid var(--border2);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:3px 6px;border-radius:4px;">
+        <option value="86400">24 hours</option>
+        <option value="43200">12 hours</option>
+        <option value="3600">1 hour</option>
+        <option value="0">Manual only</option>
+      </select>
+    </div>
+    <div class="refresh-info">Next: <span class="next-refresh" id="next-refresh-time">—</span></div>
+    <button class="btn primary" id="run-btn" onclick="runCheck()">▶ Run check</button>
+  </div>
+</div>
+
+<!-- MODE TOGGLE BAR -->
+<div class="mode-toggle-wrap">
+  <span class="mode-toggle-label">Source mode:</span>
+  <span class="mode-badge centralised" id="mode-badge">● Centralised</span>
+  <label class="toggle-switch" title="Enable to use local/manual site list">
+    <input type="checkbox" id="local-mode-toggle" onchange="onModeToggle()">
+    <span class="toggle-slider"></span>
+  </label>
+  <span class="mode-badge local" style="opacity:0.4" id="local-badge">Local</span>
+  <span class="mode-desc" id="mode-desc">— reading sites from <code style="color:var(--cyan);font-size:10px;">sitestocheck.csv</code> on this server</span>
+  <div class="csv-status" id="csv-status">
+    <span class="dot-live"></span>
+    <span id="csv-status-text">Loading…</span>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="api-row">
+    <label>API:</label>
+    <input type="text" id="api-url" value="https://certcheck.imatec.co.nz/certcheck" placeholder="https://yourserver.com/certcheck">
+    <button class="btn" onclick="saveApi()">Save</button>
+  </div>
+  <div class="sep"></div>
+  <div class="file-btn-wrap centralised-hide">
+    <button class="btn">⬆ Import CSV</button>
+    <input type="file" id="csv-file" accept=".csv" onchange="importCSV(this.files[0])">
+  </div>
+  <button class="btn centralised-hide" onclick="toggleManage()">✎ Manage sites</button>
+  <button class="btn" onclick="exportCSV()">⬇ Export CSV</button>
+  <div class="sep"></div>
+  <div class="api-row">
+    <label>Warn ≤</label>
+    <input type="number" id="threshold" value="90" min="1" max="365">
+    <label>days</label>
+  </div>
+</div>
+
+<div class="manage-panel" id="manage-panel">
+  <div class="manage-panel-header" onclick="toggleSiteList()">
+    <div class="manage-panel-title">
+      <span class="manage-chevron" id="manage-chevron">▼</span>
+      Site list <span id="site-count" style="color:var(--dim);font-size:10px;"></span>
+    </div>
+    <span style="font-size:11px;color:var(--dim);font-family:var(--font-mono);">click to collapse</span>
+  </div>
+  <div class="manage-body" id="manage-body">
+    <div class="site-list" id="site-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-url" placeholder="domain.com">
+      <input type="number" id="new-port" placeholder="Port" min="1" max="65535">
+      <input type="text" id="new-comment" placeholder="Comment">
+      <button class="btn primary" onclick="addSite()">+ Add</button>
+      <button class="btn danger" onclick="clearSites()">✕ Clear all</button>
+    </div>
+  </div>
+</div>
+
+<div class="summary-strip" id="summary-strip" style="display:none;">
+  <div class="stat"><div class="stat-label">Total</div><div class="stat-val blue" id="s-total">0</div></div>
+  <div class="stat"><div class="stat-label">Expired</div><div class="stat-val red" id="s-expired">0</div></div>
+  <div class="stat"><div class="stat-label">Critical ≤14d</div><div class="stat-val" style="color:#ff8c42" id="s-critical">0</div></div>
+  <div class="stat"><div class="stat-label">Expiring</div><div class="stat-val amber" id="s-expiring">0</div></div>
+  <div class="stat"><div class="stat-label">OK</div><div class="stat-val green" id="s-ok">0</div></div>
+  <div class="stat"><div class="stat-label">Suspended</div><div class="stat-val muted" id="s-suspended">0</div></div>
+  <div class="stat"><div class="stat-label">Errors</div><div class="stat-val muted" id="s-errors">0</div></div>
+  <div class="stat"><div class="stat-label">Auto-renew</div><div class="stat-val green" id="s-auto">0</div></div>
+  <div class="stat"><div class="stat-label">Last checked</div><div class="stat-val muted" style="font-size:13px;" id="s-time">—</div></div>
+</div>
+
+<div class="filter-bar" id="filter-bar" style="display:none;">
+  <span class="filter-label">HIDE:</span>
+  <button class="filt active" onclick="toggleFilter('suspended')" data-f="suspended">Suspended</button>
+  <button class="filt active" onclick="toggleFilter('auto-ok')" data-f="auto-ok">Auto-renew OK</button>
+  <button class="filt" onclick="toggleFilter('ok')" data-f="ok">OK</button>
+  <button class="filt" onclick="toggleFilter('expiring')" data-f="expiring">Expiring</button>
+  <button class="filt" onclick="toggleFilter('critical')" data-f="critical">Critical</button>
+  <button class="filt" onclick="toggleFilter('expired')" data-f="expired">Expired</button>
+  <button class="filt" onclick="toggleFilter('error')" data-f="error">Errors</button>
+  <button class="filt" onclick="toggleFilter('manual')" data-f="manual">Manual renew</button>
+  <span class="filter-hint">active = hidden</span>
+</div>
+
+<div class="progress-wrap" id="progress-wrap">
+  <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="col-status"  onclick="sortBy('status')">Status</th>
+        <th class="col-domain"  onclick="sortBy('domain')">Domain</th>
+        <th class="col-port"    onclick="sortBy('port')">Port</th>
+        <th class="col-expiry"  onclick="sortBy('expiry')">Expires</th>
+        <th class="col-days"    onclick="sortBy('days')">Days</th>
+        <th class="col-proto"   onclick="sortBy('proto')">Protocol</th>
+        <th class="col-issuer"  onclick="sortBy('issuer')">Issuer</th>
+        <th class="col-renew"   onclick="sortBy('renew')">Renewal</th>
+        <th class="col-comment">Comment</th>
+      </tr>
+    </thead>
+    <tbody id="results-body">
+      <tr><td colspan="9" class="empty">
+        <div class="empty-icon">⬡</div>
+        Import a CSV or add sites via "Manage sites", then click Run check
+      </td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  <div class="footer-left" id="footer-status">No check run yet</div>
+  <div class="footer-right">
+    <button class="btn" onclick="exportJSON()">Export JSON</button>
+  </div>
+</div>
+
+<!-- Detail modal -->
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal" id="modal-content">
+    <h3 id="modal-title">Certificate detail</h3>
+    <div id="modal-body"></div>
+    <button class="btn modal-close" onclick="document.getElementById('modal').classList.remove('open')">Close</button>
+  </div>
+</div>
+
+<script>
+const DB = 'certmonitor_v2';
+let sites = [];       // {url, port, isSuspended, comment}
+let results = {};     // keyed by "domain:port"
+let activeFilter = 'all'; // kept for legacy compat, not used by new logic
+let excludeFilters = new Set(['suspended', 'auto-ok']); // default exclusions
+let sortCol = 'days';
+let sortDir = 1;
+let refreshTimer = null;
+let lastChecked = null;
+
+// ── PERSISTENCE ──
+function save() {
+  localStorage.setItem(DB + '_sites', JSON.stringify(sites));
+  localStorage.setItem(DB + '_results', JSON.stringify(results));
+  localStorage.setItem(DB + '_lastChecked', lastChecked || '');
+  localStorage.setItem(DB + '_api', document.getElementById('api-url').value);
+  localStorage.setItem(DB + '_threshold', document.getElementById('threshold').value);
+  localStorage.setItem(DB + '_interval', document.getElementById('refresh-interval').value);
+}
+
+function load() {
+  try { sites = JSON.parse(localStorage.getItem(DB + '_sites') || '[]'); } catch(e) { sites = []; }
+  try { results = JSON.parse(localStorage.getItem(DB + '_results') || '{}'); } catch(e) { results = {}; }
+  lastChecked = localStorage.getItem(DB + '_lastChecked') || null;
+  const api = localStorage.getItem(DB + '_api');
+  if (api) document.getElementById('api-url').value = api;
+  // else leave the hardcoded default in place
+  const thr = localStorage.getItem(DB + '_threshold');
+  if (thr) document.getElementById('threshold').value = thr;
+  const inv = localStorage.getItem(DB + '_interval');
+  if (inv) document.getElementById('refresh-interval').value = inv;
+}
+
+// ── API ──
+function getApi() { return (localStorage.getItem(DB + '_api') || document.getElementById('api-url').value || '').replace(/\/$/, ''); }
+function saveApi() {
+  const v = document.getElementById('api-url').value.trim().replace(/\/$/, '');
+  localStorage.setItem(DB + '_api', v);
+  showToast('API URL saved');
+}
+
+// ── CSV IMPORT ──
+function importCSV(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g,''));
+    const iUrl  = header.findIndex(h => h === 'url');
+    const iPort = header.findIndex(h => h === 'port');
+    const iSusp = header.findIndex(h => h === 'issuspended');
+    const iCom  = header.findIndex(h => h === 'comment');
+    if (iUrl < 0) { alert('CSV must have a "url" column header'); return; }
+    let imported = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i]);
+      const url = (cols[iUrl] || '').trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'').toLowerCase();
+      if (!url || !url.includes('.')) continue;
+      const port = iPort >= 0 ? (parseInt(cols[iPort]) || '') : '';
+      const rawSusp = iSusp >= 0 ? (cols[iSusp] || '').trim().toLowerCase() : '';
+      const isSuspended = ['y','yes','true','1'].includes(rawSusp);
+      const comment = iCom >= 0 ? (cols[iCom] || '').trim() : '';
+      const key = url + ':' + (port || 443);
+      if (!sites.find(s => s.url === url && String(s.port || '') === String(port || ''))) {
+        sites.push({ url, port, isSuspended, comment });
+        imported++;
+      }
+    }
+    save();
+    renderManage();
+    showToast(`Imported ${imported} sites`);
+  };
+  reader.readAsText(file);
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; continue; }
+    if (c === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── MANAGE PANEL ──
+function toggleManage() {
+  const p = document.getElementById('manage-panel');
+  p.classList.toggle('open');
+  if (p.classList.contains('open')) {
+    renderManage();
+    // restore collapsed state
+    const collapsed = localStorage.getItem(DB + '_siteListCollapsed') === 'true';
+    document.getElementById('manage-body').classList.toggle('collapsed', collapsed);
+    document.getElementById('manage-chevron').classList.toggle('collapsed', collapsed);
+    document.querySelector('.manage-panel-header span:last-child').textContent = collapsed ? 'click to expand' : 'click to collapse';
+  }
+}
+
+function toggleSiteList() {
+  const body = document.getElementById('manage-body');
+  const chev = document.getElementById('manage-chevron');
+  const hint = document.querySelector('.manage-panel-header span:last-child');
+  const isNowCollapsed = !body.classList.contains('collapsed');
+  body.classList.toggle('collapsed', isNowCollapsed);
+  chev.classList.toggle('collapsed', isNowCollapsed);
+  hint.textContent = isNowCollapsed ? 'click to expand' : 'click to collapse';
+  localStorage.setItem(DB + '_siteListCollapsed', isNowCollapsed);
+}
+
+function renderManage() {
+  const countEl = document.getElementById('site-count');
+  if (countEl) countEl.textContent = sites.length ? `(${sites.length})` : '';
+  const el = document.getElementById('site-list');
+  if (!sites.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px;">No sites added yet.</div>'; return; }
+  el.innerHTML = sites.map((s, i) => `
+    <div class="site-item">
+      <input type="text" value="${esc(s.url)}" onchange="updateSite(${i},'url',this.value)" style="font-family:var(--font-mono);">
+      <input type="number" value="${s.port||''}" placeholder="443" onchange="updateSite(${i},'port',this.value)" min="1" max="65535">
+      <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" ${s.isSuspended?'checked':''} onchange="updateSite(${i},'isSuspended',this.checked)"> Suspend
+      </label>
+      <input type="text" value="${esc(s.comment||'')}" placeholder="Comment" onchange="updateSite(${i},'comment',this.value)">
+      <button class="btn danger" style="padding:3px 8px;" onclick="removeSite(${i})">✕</button>
+    </div>`).join('');
+}
+
+function updateSite(i, key, val) {
+  if (key === 'port') val = parseInt(val) || '';
+  sites[i][key] = val;
+  save();
+}
+function removeSite(i) { sites.splice(i, 1); save(); renderManage(); }
+function clearSites() { if (confirm('Clear all sites?')) { sites = []; results = {}; save(); renderManage(); renderTable(); } }
+function addSite() {
+  const url = document.getElementById('new-url').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'').toLowerCase();
+  const port = parseInt(document.getElementById('new-port').value) || '';
+  const comment = document.getElementById('new-comment').value.trim();
+  if (!url || !url.includes('.')) { alert('Enter a valid domain'); return; }
+  sites.push({ url, port, isSuspended: false, comment });
+  save();
+  renderManage();
+  document.getElementById('new-url').value = '';
+  document.getElementById('new-port').value = '';
+  document.getElementById('new-comment').value = '';
+}
+
+// ── CHECK ──
+async function runCheck() {
+  const api = getApi();
+  if (!api) { alert('Enter your API URL first'); return; }
+  const active = sites.filter(s => !s.isSuspended);
+  if (!active.length) { alert('No active sites to check. Add sites via Manage or import a CSV.'); return; }
+
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.textContent = '⏳ Checking…';
+  document.getElementById('progress-wrap').style.display = '';
+  document.getElementById('progress-bar').style.width = '0%';
+
+  const threshold = parseInt(document.getElementById('threshold').value) || 90;
+  let done = 0;
+  const CONC = 5;
+
+  async function checkOne(s) {
+    const port = s.port || 443;
+    const key = s.url + ':' + port;
+    try {
+      const res = await fetch(`${api}?domain=${encodeURIComponent(s.url)}&port=${port}`);
+      const data = await res.json();
+      results[key] = { ...data, comment: s.comment, isSuspended: false };
+    } catch(e) {
+      results[key] = { domain: s.url, port, error: 'Request failed: ' + e.message, days_left: null, comment: s.comment, isSuspended: false };
+    }
+    done++;
+    document.getElementById('progress-bar').style.width = Math.round(done / active.length * 100) + '%';
+    renderTable();
+    renderSummary(threshold);
+  }
+
+  for (let i = 0; i < active.length; i += CONC) {
+    await Promise.all(active.slice(i, i + CONC).map(checkOne));
+  }
+
+  // add suspended entries
+  sites.filter(s => s.isSuspended).forEach(s => {
+    const key = s.url + ':' + (s.port || 443);
+    results[key] = { domain: s.url, port: s.port || 443, isSuspended: true, comment: s.comment, days_left: null, error: null };
+  });
+
+  lastChecked = new Date().toISOString();
+  save();
+  document.getElementById('progress-wrap').style.display = 'none';
+  btn.disabled = false; btn.textContent = '▶ Run check';
+  document.getElementById('footer-status').textContent = `Last checked: ${fmt(new Date(lastChecked))}  ·  ${active.length} sites checked`;
+  scheduleNext();
+}
+
+// ── RENDER TABLE ──
+function statusInfo(r, threshold) {
+  if (r.isSuspended)            return { label: 'SUSPENDED', cls: 'suspended' };
+  if (r.error)                   return { label: 'ERROR',     cls: 'error' };
+  if (r.days_left === null)      return { label: 'ERROR',     cls: 'error' };
+  if (r.days_left < 0)           return { label: 'EXPIRED',   cls: 'expired' };
+  // Auto-renew certs with >30 days left are always OK — they'll renew before they expire
+  if (r.auto_renew === true && r.days_left > 30) return { label: 'OK', cls: 'ok' };
+  if (r.days_left <= 14)         return { label: 'CRITICAL',  cls: 'critical' };
+  if (r.days_left <= threshold)  return { label: 'EXPIRING',  cls: 'warning' };
+  return { label: 'OK', cls: 'ok' };
+}
+
+function daysClass(days) {
+  if (days === null) return 'muted';
+  if (days < 0) return 'red';
+  if (days <= 14) return 'orange';
+  if (days <= 30) return 'amber';
+  return 'green';
+}
+
+function protoBadge(proto) {
+  if (!proto) return '<span style="color:var(--muted);font-size:11px;">—</span>';
+  const cls = proto === 'TLSv1.3' ? 'tls13' : proto === 'TLSv1.2' ? 'tls12' : 'old';
+  return `<span class="proto-badge ${cls}">${proto}</span>`;
+}
+
+function renewBadge(r) {
+  if (r.isSuspended || r.error || r.days_left === null) return '<span style="color:var(--dim);font-size:11px;">—</span>';
+  if (r.self_signed) return '<span class="renew-badge self">Self-signed</span>';
+  if (r.auto_renew)  return '<span class="renew-badge auto">⟳ Auto</span>';
+  if (r.auto_renew === false) return '<span class="renew-badge manual">⚠ Manual</span>';
+  return '<span class="renew-badge unknown">?</span>';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-NZ', { day:'2-digit', month:'short', year:'numeric' });
+}
+function fmt(d) { return d.toLocaleString('en-NZ', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function renderTable() {
+  const threshold = parseInt(document.getElementById('threshold').value) || 90;
+
+  let rows = sites.map(s => {
+    const key = s.url + ':' + (s.port || 443);
+    const r = results[key] || { domain: s.url, port: s.port || 443, days_left: null, error: null, isSuspended: s.isSuspended, comment: s.comment };
+    if (!r.comment) r.comment = s.comment;
+    r.isSuspended = s.isSuspended;
+    return r;
+  });
+
+  // Apply exclusion filters (combinable)
+  rows = rows.filter(r => {
+    const s = statusInfo(r, threshold);
+    // Exclude suspended
+    if (excludeFilters.has('suspended') && r.isSuspended) return false;
+    // Exclude auto-renew sites that are OK (auto_renew=true and status is ok)
+    if (excludeFilters.has('auto-ok') && !r.isSuspended && !r.error && r.auto_renew === true && s.cls === 'ok') return false;
+    // Exclude plain OK (non-auto-renew OK)
+    if (excludeFilters.has('ok') && !r.isSuspended && !r.error && s.cls === 'ok' && r.auto_renew !== true) return false;
+    // Exclude expiring
+    if (excludeFilters.has('expiring') && !r.isSuspended && s.cls === 'warning') return false;
+    // Exclude critical
+    if (excludeFilters.has('critical') && !r.isSuspended && s.cls === 'critical') return false;
+    // Exclude expired
+    if (excludeFilters.has('expired') && !r.isSuspended && s.cls === 'expired') return false;
+    // Exclude errors
+    if (excludeFilters.has('error') && !r.isSuspended && r.error) return false;
+    // Exclude manual renew
+    if (excludeFilters.has('manual') && !r.isSuspended && !r.error && r.auto_renew === false && !r.self_signed) return false;
+    return true;
+  });
+
+  // sort
+  rows.sort((a, b) => {
+    let av, bv;
+    if (sortCol === 'days')   { av = a.days_left ?? 99999; bv = b.days_left ?? 99999; }
+    else if (sortCol === 'domain') { av = a.domain||''; bv = b.domain||''; }
+    else if (sortCol === 'port')   { av = a.port||443; bv = b.port||443; }
+    else if (sortCol === 'expiry') { av = a.expiry||''; bv = b.expiry||''; }
+    else if (sortCol === 'issuer') { av = a.issuer||''; bv = b.issuer||''; }
+    else if (sortCol === 'status') { av = statusInfo(a,threshold).cls; bv = statusInfo(b,threshold).cls; }
+    else if (sortCol === 'renew')  { av = a.auto_renew===true?0:a.auto_renew===false?1:2; bv = b.auto_renew===true?0:b.auto_renew===false?1:2; }
+    else if (sortCol === 'proto')  { av = a.protocol||''; bv = b.protocol||''; }
+    else { av = ''; bv = ''; }
+    if (av < bv) return -sortDir; if (av > bv) return sortDir; return 0;
+  });
+
+  // update sort headers
+  document.querySelectorAll('th').forEach(th => { th.classList.remove('sort-asc','sort-desc'); });
+  const colMap = { status:0, domain:1, port:2, expiry:3, days:4, proto:5, issuer:6, renew:7 };
+  const thIdx = colMap[sortCol];
+  if (thIdx !== undefined) {
+    const ths = document.querySelectorAll('th');
+    ths[thIdx].classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+  }
+
+  if (!rows.length) {
+    document.getElementById('results-body').innerHTML = '<tr><td colspan="9" class="empty"><div class="empty-icon">⬡</div>No results match this filter</td></tr>';
+    return;
+  }
+
+  document.getElementById('results-body').innerHTML = rows.map(r => {
+    const s = statusInfo(r, threshold);
+    const dc = daysClass(r.isSuspended ? null : r.days_left);
+    const daysStr = r.isSuspended ? '—' : (r.days_left === null ? '—' : (r.days_left < 0 ? Math.abs(r.days_left) + 'd ago' : r.days_left + 'd'));
+    const portStr = r.port && r.port !== 443 ? r.port : '<span style="color:var(--dim)">443</span>';
+    const errorTitle = r.error ? ` title="${esc(r.error)}"` : '';
+    const commentTitle = r.comment ? ` title="${esc(r.comment)}"` : '';
+    const key = esc(r.domain + ':' + (r.port||443));
+    return `<tr class="${r.isSuspended?'suspended':''}" onclick="showDetail('${esc(r.domain)}',${r.port||443})" style="cursor:pointer;">
+      <td class="col-status"><span class="badge ${s.cls}"><span class="dot ${s.cls}"></span>${s.label}</span></td>
+      <td class="col-domain" style="font-family:var(--font-mono);font-size:12px;"${errorTitle}>${esc(r.domain)}</td>
+      <td class="col-port" style="font-family:var(--font-mono);font-size:12px;text-align:center;color:var(--muted);">${portStr}</td>
+      <td class="col-expiry" style="font-family:var(--font-mono);font-size:12px;">${fmtDate(r.expiry)}</td>
+      <td class="col-days days-cell ${dc}">${daysStr}</td>
+      <td class="col-proto">${protoBadge(r.protocol)}</td>
+      <td class="col-issuer" style="font-size:12px;color:var(--muted);" title="${esc(r.issuer||'')}">${esc(r.issuer||'—')}</td>
+      <td class="col-renew">${renewBadge(r)}</td>
+      <td class="col-comment comment-cell"${commentTitle}>${r.error && !r.isSuspended ? `<span class="error-cell"${errorTitle}>⚠ ${esc(r.error)}</span>` : esc(r.comment||'')}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('summary-strip').style.display = '';
+  document.getElementById('filter-bar').style.display = '';
+}
+
+function renderSummary(threshold) {
+  const t = threshold || parseInt(document.getElementById('threshold').value) || 90;
+  const all = sites.map(s => {
+    const key = s.url + ':' + (s.port || 443);
+    const r = results[key] || { isSuspended: s.isSuspended, days_left: null, error: null };
+    r.isSuspended = s.isSuspended;
+    return r;
+  });
+  document.getElementById('s-total').textContent     = all.length;
+  document.getElementById('s-expired').textContent   = all.filter(r => !r.isSuspended && !r.error && r.days_left < 0).length;
+  document.getElementById('s-critical').textContent  = all.filter(r => !r.isSuspended && !r.error && r.days_left >= 0 && r.days_left <= 14).length;
+  document.getElementById('s-expiring').textContent  = all.filter(r => !r.isSuspended && !r.error && r.days_left > 14 && r.days_left <= t).length;
+  document.getElementById('s-ok').textContent        = all.filter(r => !r.isSuspended && !r.error && r.days_left > t).length;
+  document.getElementById('s-suspended').textContent = all.filter(r => r.isSuspended).length;
+  document.getElementById('s-errors').textContent    = all.filter(r => !r.isSuspended && r.error).length;
+  document.getElementById('s-auto').textContent      = all.filter(r => !r.isSuspended && !r.error && r.auto_renew).length;
+  document.getElementById('s-time').textContent      = lastChecked ? new Date(lastChecked).toLocaleTimeString('en-NZ', {hour:'2-digit',minute:'2-digit'}) : '—';
+}
+
+// ── SORT / FILTER ──
+function sortBy(col) {
+  if (sortCol === col) sortDir = -sortDir;
+  else { sortCol = col; sortDir = 1; }
+  renderTable();
+}
+function toggleFilter(f) {
+  if (excludeFilters.has(f)) excludeFilters.delete(f);
+  else excludeFilters.add(f);
+  document.querySelectorAll('.filt').forEach(b => b.classList.toggle('active', excludeFilters.has(b.dataset.f)));
+  renderTable();
+}
+
+// ── DETAIL MODAL ──
+function showDetail(domain, port) {
+  const key = domain + ':' + port;
+  const r = results[key];
+  const site = sites.find(s => s.url === domain && (s.port||443) == port);
+  if (!r && !site) return;
+
+  document.getElementById('modal-title').textContent = domain + (port !== 443 ? ':' + port : '');
+  const rows = [];
+  const add = (k, v) => rows.push(`<div class="modal-row"><div class="modal-key">${k}</div><div class="modal-val">${v}</div></div>`);
+
+  if (site?.comment) add('Comment', esc(site.comment));
+  if (site?.isSuspended) add('Status', '<span class="badge suspended">SUSPENDED</span>');
+
+  if (r && !r.isSuspended) {
+    if (r.error) {
+      add('Error', `<span style="color:var(--red);font-family:var(--font-mono);font-size:12px;">${esc(r.error)}</span>`);
+    } else {
+      const threshold = parseInt(document.getElementById('threshold').value) || 90;
+      add('Status', `<span class="badge ${statusInfo(r,threshold).cls}"><span class="dot ${statusInfo(r,threshold).cls}"></span>${statusInfo(r,threshold).label}</span>`);
+      add('Common name', `<span style="font-family:var(--font-mono);font-size:12px;">${esc(r.common_name||'—')}</span>`);
+      add('Expires', `<span style="font-family:var(--font-mono);">${fmtDate(r.expiry)}</span>`);
+      add('Days left', `<span class="days-cell ${daysClass(r.days_left)}" style="font-family:var(--font-mono);">${r.days_left !== null ? r.days_left : '—'}</span>`);
+      add('Issuer', esc(r.issuer||'—'));
+      add('Protocol', protoBadge(r.protocol));
+      add('Renewal', renewBadge(r));
+      if (r.san && r.san.length) {
+        add('SANs', `<div class="san-list">${r.san.map(s=>`<span class="san-tag">${esc(s)}</span>`).join('')}</div>`);
+      }
+    }
+  }
+
+  document.getElementById('modal-body').innerHTML = rows.join('');
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(e) { if (e.target.id === 'modal') document.getElementById('modal').classList.remove('open'); }
+
+// ── AUTO REFRESH ──
+function scheduleNext() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  const secs = parseInt(document.getElementById('refresh-interval').value) || 0;
+  if (!secs) { document.getElementById('next-refresh-time').textContent = 'Manual only'; return; }
+  const next = new Date(Date.now() + secs * 1000);
+  document.getElementById('next-refresh-time').textContent = fmt(next);
+  refreshTimer = setTimeout(() => runCheck(), secs * 1000);
+}
+
+document.getElementById('refresh-interval').addEventListener('change', () => { save(); scheduleNext(); });
+document.getElementById('threshold').addEventListener('change', () => { save(); renderTable(); renderSummary(); });
+
+// ── EXPORT ──
+function exportCSV() {
+  const threshold = parseInt(document.getElementById('threshold').value) || 90;
+  const header = 'url,port,IsSuspended,Comment,expiry,days_left,issuer,protocol,auto_renew,status,error';
+  const rows = sites.map(s => {
+    const key = s.url + ':' + (s.port||443);
+    const r = results[key] || {};
+    const stat = statusInfo({...r, isSuspended: s.isSuspended}, threshold).label;
+    return [s.url, s.port||443, s.isSuspended?'y':'n', s.comment, r.expiry||'', r.days_left??'', r.issuer||'', r.protocol||'', r.auto_renew===true?'auto':r.auto_renew===false?'manual':'', stat, r.error||'']
+      .map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+  });
+  dl([header,...rows].join('\n'), 'cert-monitor.csv', 'text/csv');
+}
+function exportJSON() {
+  const threshold = parseInt(document.getElementById('threshold').value) || 90;
+  const data = sites.map(s => {
+    const key = s.url + ':' + (s.port||443);
+    const r = results[key] || {};
+    return { ...s, ...r, status: statusInfo({...r, isSuspended: s.isSuspended}, threshold).label };
+  });
+  dl(JSON.stringify(data, null, 2), 'cert-monitor.json', 'application/json');
+}
+function dl(content, filename, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], {type}));
+  a.download = filename;
+  a.click();
+}
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, { position:'fixed', bottom:'24px', right:'24px', background:'var(--surface)', border:'1px solid var(--border2)', color:'var(--cyan)', fontFamily:'var(--font-mono)', fontSize:'12px', padding:'10px 18px', borderRadius:'4px', zIndex:'200', opacity:'0', transition:'opacity 0.2s' });
+  document.body.appendChild(t);
+  requestAnimationFrame(() => { t.style.opacity = '1'; setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 200); }, 2000); });
+}
+
+// ── MODE TOGGLE ──
+let isCentralisedMode = true; // default
+
+function onModeToggle() {
+  isCentralisedMode = !document.getElementById('local-mode-toggle').checked;
+  applyMode();
+  if (isCentralisedMode) {
+    loadCentralisedCSV();
+  }
+}
+
+function applyMode() {
+  const modeBadge   = document.getElementById('mode-badge');
+  const localBadge  = document.getElementById('local-badge');
+  const modeDesc    = document.getElementById('mode-desc');
+  const csvStatus   = document.getElementById('csv-status');
+
+  if (isCentralisedMode) {
+    document.body.classList.add('mode-centralised');
+    modeBadge.style.opacity  = '1';
+    localBadge.style.opacity = '0.4';
+    modeDesc.innerHTML = '— reading sites from <code style="color:var(--cyan);font-size:10px;">sitestocheck.csv</code> on this server';
+    csvStatus.style.display = 'flex';
+  } else {
+    document.body.classList.remove('mode-centralised');
+    modeBadge.style.opacity  = '0.4';
+    localBadge.style.opacity = '1';
+    modeDesc.innerHTML = '— using locally managed / imported site list';
+    csvStatus.style.display = 'none';
+  }
+}
+
+async function loadCentralisedCSV() {
+  const statusText = document.getElementById('csv-status-text');
+  statusText.textContent = 'Fetching sitestocheck.csv…';
+  try {
+    const res = await fetch('./sitestocheck.csv?_=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const parsed = parseCSVText(text);
+    sites = parsed.sites;
+    results = {};
+    lastChecked = null;
+    save();
+    renderManage();
+    renderTable();
+    renderSummary();
+    statusText.textContent = `${sites.length} sites loaded`;
+    showToast(`Centralised: loaded ${sites.length} sites from CSV`);
+    // auto-run check
+    runCheck();
+  } catch(e) {
+    statusText.textContent = 'CSV load failed: ' + e.message;
+    showToast('⚠ Could not load sitestocheck.csv — ' + e.message);
+  }
+}
+
+function parseCSVText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return { sites: [] };
+  const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g,''));
+  const iUrl  = header.findIndex(h => h === 'url');
+  const iPort = header.findIndex(h => h === 'port');
+  const iSusp = header.findIndex(h => h === 'issuspended');
+  const iCom  = header.findIndex(h => h === 'comment');
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    const url = (cols[iUrl] || '').trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'').toLowerCase();
+    if (!url || !url.includes('.')) continue;
+    const port = iPort >= 0 ? (parseInt(cols[iPort]) || '') : '';
+    const rawSusp = iSusp >= 0 ? (cols[iSusp] || '').trim().toLowerCase() : '';
+    const isSuspended = ['y','yes','true','1'].includes(rawSusp);
+    const comment = iCom >= 0 ? (cols[iCom] || '').trim() : '';
+    out.push({ url, port, isSuspended, comment });
+  }
+  return { sites: out };
+}
+
+// ── INIT ──
+window.addEventListener('load', () => {
+  load();
+  applyMode(); // centralised by default
+
+  if (isCentralisedMode) {
+    // Centralised mode: always load fresh from CSV
+    loadCentralisedCSV();
+  } else {
+    // Local mode: restore from localStorage as before
+    if (sites.length) {
+      renderManage();
+      renderTable();
+      renderSummary();
+      if (lastChecked) {
+        document.getElementById('footer-status').textContent = `Last checked: ${fmt(new Date(lastChecked))}`;
+        document.getElementById('summary-strip').style.display = '';
+        document.getElementById('filter-bar').style.display = '';
+      }
+    }
+  }
+  scheduleNext();
+});
+</script>
+</body>
+</html>
